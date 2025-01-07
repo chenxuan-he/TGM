@@ -109,7 +109,8 @@ def train_diffusion_model(data, n_steps=100, epochs=500, batch_size=64, lr=1e-3)
             alpha_t = alpha_cumprod[t]
             beta_t = beta[t]
             noise = torch.randn_like(samples) if t > 0 else 0
-            samples = (samples - (1 - alpha_t) / torch.sqrt(1 - alpha_cumprod[t]) * model(samples, torch.tensor([t]).float())) / torch.sqrt(alpha_t)
+            t_tensor = torch.full((n_samples,), t, dtype=torch.float32)
+            samples = (samples - (1 - alpha_t) / torch.sqrt(1 - alpha_cumprod[t]) * model(samples, t_tensor)) / torch.sqrt(alpha_t)
             samples += torch.sqrt(beta_t) * noise
         return samples.detach().numpy()
     return sample
@@ -197,42 +198,25 @@ n = 200
 X = generate_standard_normal(n, p)
 
 # Train GAN
-# gan = GAN(data_dim=p, noise_dim=10)
-# gan.train(X, epochs=500)
-# gan_samples = gan.sample(n_gen_samples)
+gan = GAN(data_dim=p, noise_dim=10)
+gan.train(X, epochs=500)
+gan_samples = gan.sample(n_gen_samples)
 
 # Train Diffusion Model
-diffusion_model = train_diffusion_model(X)
-diffusion_samples = diffusion_model(n_gen_samples)
+# diffusion_model = train_diffusion_model(X)
+# diffusion_samples = diffusion_model(n_gen_samples)
 
 # Train Flow Model
-flow_model = train_flow_model(X)
-flow_samples = flow_model(n_gen_samples)
+# flow_model = train_flow_model(X)
+# flow_samples = flow_model(n_gen_samples)
 
 # Perform the permutation test
 results = {}
 for model_name, generated_data in {
     "GAN": gan_samples,
-    "Diffusion": diffusion_samples,
-    "Flow": flow_samples,
+    # "Diffusion": diffusion_samples,
+    # "Flow": flow_samples,
 }.items():
     _, _, p_value = permutation_test(X, generated_data, nsim=nsim)
     results[model_name] = p_value
 
-
-# Training generative models
-diffusion_sample_fn = train_diffusion_model(X)
-flow_sample_fn = train_flow_model(X)
-
-# Generate samples
-diffusion_samples = diffusion_sample_fn(n_gen_samples)
-flow_samples = flow_sample_fn(n_gen_samples)
-
-# Test generative models
-results = {
-    "Diffusion": permutation_test(X, diffusion_samples, nsim=nsim)[2],
-    "Flow": permutation_test(X, flow_samples, nsim=nsim)[2],
-}
-
-for model, p_value in results.items():
-    print(f"Model: {model}, P-value: {p_value}")
