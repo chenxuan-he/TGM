@@ -100,3 +100,24 @@ def U_L_MT_ED(X, Y):
     Indep_Index = (m * (np.sum(IN1) / 2 - np.sum(IN2)) + m * (np.sum(IN1) / 2 - np.sum(IN3)) +
                    n * (np.sum(SA1) / 2 - np.sum(SA2)) + n * (np.sum(SA1) / 2 - np.sum(SA3))) / (m + n)
     return Indep_Index
+
+# Permutation test
+def permutation_test(X, Y, nsim=100):
+    n, p = X.shape
+    m = Y.shape[0]
+    # Calculate the original statistic
+    original_statistic = U_L_MT_ED(X, Y)
+    # Combine X and Y
+    combined = np.vstack((X, Y))
+    # Perform permutations
+    shuffled_statistics = []
+    for _ in range(nsim):
+        np.random.shuffle(combined)
+        X_prime = combined[:n, :]
+        Y_prime = combined[n:, :]
+        shuffled_statistic = U_L_MT_ED(X_prime, Y_prime)
+        shuffled_statistics.append(shuffled_statistic)
+    # Calculate p-value
+    shuffled_statistics = np.array(shuffled_statistics)
+    p_value = np.mean(shuffled_statistics >= original_statistic)
+    return original_statistic, shuffled_statistics, p_value
