@@ -198,7 +198,7 @@ n = 200
 X = generate_standard_normal(n, p)
 
 # Train GAN
-gan = GAN(data_dim=p, noise_dim=10)
+gan = GAN(data_dim=p, noise_dim=p)
 gan.train(X, epochs=500)
 gan_samples = gan.sample(n_gen_samples)
 
@@ -210,13 +210,20 @@ gan_samples = gan.sample(n_gen_samples)
 # flow_model = train_flow_model(X)
 # flow_samples = flow_model(n_gen_samples)
 
+from functions import RectifiedFlow, train_rectified_flow, MLP
+gaussian_variable = torch.randn(n, p, dtype=torch.float32)
+iterations = 100
+batchsize = 500
+x1_pairs = torch.stack([gaussian_variable, torch.tensor(X, dtype=torch.float32)], dim=1)
+rectified_flow_1 = RectifiedFlow(model=MLP(input_dim=p+1, output_dim=p, hidden_num=256), num_steps=100)
+optimizer = torch.optim.Adam(rectified_flow_1.model.parameters(), lr=5e-3)
+rectified_flow_1, loss_curve1 = train_rectified_flow(rectified_flow_1, optimizer, x1_pairs, batchsize, iterations)
+
+gaussian_variable2 = torch.randn(n, p)
+flow_samples = np.array(rectified_flow_1.sample_ode(gaussian_variable2)[-1])
+
 # Perform the permutation test
-results = {}
-for model_name, generated_data in {
-    "GAN": gan_samples,
-    # "Diffusion": diffusion_samples,
-    # "Flow": flow_samples,
-}.items():
-    _, _, p_value = permutation_test(X, generated_data, nsim=nsim)
-    results[model_name] = p_value
+
+permutation_test(X, gan_samples, nsim=100)
+permutation_test(X, np.array(flow_samples), nsim=100)
 
